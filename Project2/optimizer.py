@@ -67,3 +67,5 @@ if __name__ == '__main__':
     optimizer = NewtonOptimizer(problem,1e-8)
     optimizer.solve(np.array([-8,6]),2)
     print(f'optimizer.xhist: {optimizer.xhist}')
+
+    #blabkla
