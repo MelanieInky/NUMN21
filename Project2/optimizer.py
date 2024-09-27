@@ -152,24 +152,31 @@ class QuasiNewtonOptimizer(Optimizer):
     except AttributeError: #In the case of the first step, do the usual stuff
       xnew = self.xhist[-1] 
       self.gnew = self.problem.gradf(xnew,**problem.kwargs)
-      if(self.hessian_init == "finite_diff" or self.hessian_init == "fd"):
-        hessian = finite_difference(self.problem.gradf,
-                                    xnew,
-                                    self.problem.epsilon,
-                                    **self.problem.kwargs)
-        if(self.H_type == 'inverse'):
-          self.H = np.linalg.inv(hessian)
-        else:
-          self.H = hessian
-      elif(self.hessian_init == "identity"):
-        self.H = np.identity(len(self.gnew))
-
+      self.init_H()
     if(self.H_type == 'inverse'):
       s = - self.H@self.gnew
     else:
       s = - np.linalg.solve(self.H,self.gnew)
     self.g = np.copy(self.gnew)
     return s
+  
+  def init_H(self):
+    xnew = self.xhist[-1]
+    if(self.hessian_init == "finite_diff" or self.hessian_init == "fd"):
+      hessian = finite_difference(self.problem.gradf,
+                                  xnew,
+                                  self.problem.epsilon,
+                                  **self.problem.kwargs)
+      if(self.H_type == 'inverse'):
+        self.H = np.linalg.inv(hessian)
+      else:
+        self.H = hessian
+      
+    elif(self.hessian_init == "identity"):
+      self.H = np.identity(len(self.gnew))
+    else:
+      raise ValueError("Unknown hessian initialization option: " + self.hessian_init)
+
   
   @abstractmethod
   def calculate_H(self):
@@ -330,11 +337,7 @@ if __name__ == '__main__':
 
     epsilon = 1e-6
     problem = OptimizationProblem(g, gradf = grad_g, r = 2)
-    gradtest = problem.gradf(np.array([-6,12]),**problem.kwargs)
-    hesstest = finite_difference(problem.gradf,np.array([1,2]),epsilon,**problem.kwargs)
-    print(f'hesstest: {hesstest}')
-    print(f'gradtest: {gradtest}')
 
-    optimizer = DFP(problem,1e-9,"none","fd")
+    optimizer = DFP(problem,1e-9,"none","identity")
     optimizer.solve(np.array([-100,900]),7)
     print(f'optimizer.xhist: {optimizer.xhist}')
