@@ -4,8 +4,9 @@ from optimization import OptimizationProblem
 from abc import ABC, abstractmethod
 
 class Optimizer(ABC):
-  def __init__(self,problem):
+  def __init__(self,problem,stop_threshold = 1e-6):
     self.problem = problem
+    self.stop_threshold = 1e-6
     pass
 
 
@@ -36,8 +37,8 @@ class Optimizer(ABC):
 
 class NewtonOptimizer(Optimizer):
   def __init__(self,problem,stop_threshold = 1e-6):
-    super().__init__(problem)
-    self.stop_threshold = stop_threshold
+    super().__init__(problem,stop_threshold)
+    #self.stop_threshold = stop_threshold
     pass
 
   def calculate_s(self):
@@ -48,25 +49,25 @@ class NewtonOptimizer(Optimizer):
     return s
 
 class QuasiNewtonOptimizer(Optimizer):
-  def __init__(self,problem):
-    super().__init__(problem)
+  def __init__(self,problem,stop_threshold = 1e-6):
+    super().__init__(problem,stop_threshold)
     pass
   
   def calculate_s(self):
     try: #If H already exists
+      H = self.H
       xnew = self.xhist[-1]
       x = self.xhist[-2]
-      H = self.H
       #TODO, don't compute the gradient twice, save it instead!
-      gnew = self.problem.gradf(xnew,self.problem.kwargs)
-      g = self.problem.gradf(x,self.problem.kwargs)
+      gnew = self.problem.gradf(xnew,**self.problem.kwargs)
+      g = self.problem.gradf(x,**self.problem.kwargs)
       self.H = self.calculate_H(H,gnew,g,xnew,x)
     except AttributeError: #In the case of the first step, do the usual stuff
       xnew = self.xhist[-1] 
-      hessian = finite_difference(problem.gradf,x,problem.epsilon,**problem.kwargs)
-      grad = problem.gradf(xnew,**problem.kwargs)
+      hessian = finite_difference(self.problem.gradf,xnew,problem.epsilon,**self.problem.kwargs)
+      gnew = self.problem.gradf(xnew,**problem.kwargs)
       self.H = np.linalg.inv(hessian)
-    s = - self.H@grad
+    s = - self.H@gnew
     return s
   
   @abstractmethod
@@ -77,6 +78,9 @@ class QuasiNewtonOptimizer(Optimizer):
 
 
 class GoodBroyden(QuasiNewtonOptimizer):
+    def __init__(self,problem,stop_threshold = 1e-6):
+      super().__init__(problem,stop_threshold)
+
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
@@ -224,7 +228,7 @@ if __name__ == '__main__':
     print(f'hesstest: {hesstest}')
     print(f'gradtest: {gradtest}')
 
-    optimizer = NewtonOptimizer(problem,1e-8)
+    optimizer = GoodBroyden(problem,1e-8)
     optimizer.solve(np.array([-8,6]),2)
     print(f'optimizer.xhist: {optimizer.xhist}')
 
