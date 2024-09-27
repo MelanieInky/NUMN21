@@ -56,22 +56,22 @@ class QuasiNewtonOptimizer(Optimizer):
       H = self.H
       xnew = self.xhist[-1]
       x = self.xhist[-2]
-      #TODO, don't compute the gradient twice, save it instead!
-      gnew = self.problem.gradf(xnew,**self.problem.kwargs)
-      g = self.problem.gradf(x,**self.problem.kwargs)
-      self.H = self.calculate_H(H,gnew,g,xnew,x)
+      self.gnew = self.problem.gradf(xnew,**self.problem.kwargs)
+      self.H = self.calculate_H(H,self.gnew,self.g,xnew,x)
     except AttributeError: #In the case of the first step, do the usual stuff
       xnew = self.xhist[-1] 
-      hessian = finite_difference(self.problem.gradf,xnew,problem.epsilon,**self.problem.kwargs)
-      gnew = self.problem.gradf(xnew,**problem.kwargs)
+      #hessian = finite_difference(self.problem.gradf,xnew,problem.epsilon,**self.problem.kwargs)
+      self.gnew = self.problem.gradf(xnew,**problem.kwargs)
+      hessian = np.identity(len(self.gnew)) #Identity as an init?
       if(self.H_type == 'inverse'):
         self.H = np.linalg.inv(hessian)
       else:
         self.H = hessian
     if(self.H_type == 'inverse'):
-      s = - self.H@gnew
+      s = - self.H@self.gnew
     else:
-      s = - np.linalg.solve(self.H,gnew)
+      s = - np.linalg.solve(self.H,self.gnew)
+    self.g = np.copy(self.gnew)
     return s
   
   @abstractmethod
@@ -235,11 +235,11 @@ if __name__ == '__main__':
 
     epsilon = 1e-6
     problem = OptimizationProblem(g, gradf = grad_g, r = 2)
-    gradtest = problem.gradf(np.array([1,2]),**problem.kwargs)
+    gradtest = problem.gradf(np.array([-6,12]),**problem.kwargs)
     hesstest = finite_difference(problem.gradf,np.array([1,2]),epsilon,**problem.kwargs)
     print(f'hesstest: {hesstest}')
     print(f'gradtest: {gradtest}')
 
-    optimizer = GoodBroyden(problem,1e-9)
-    optimizer.solve(np.array([-8,6]),4)
+    optimizer = DFP(problem,1e-9)
+    optimizer.solve(np.array([-100,900]),7)
     print(f'optimizer.xhist: {optimizer.xhist}')
