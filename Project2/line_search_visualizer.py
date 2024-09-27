@@ -33,7 +33,7 @@ def plot_phi(f: Callable[Concatenate[npt.ArrayLike,...],float],
     phi0 = phi(0)
     dphi0 = (phi(eps) - phi(0)) / eps #Finite difference
     
-    alphas = np.linspace(0,alpha_max,200)
+    alphas = np.linspace(0,alpha_max,400)
     rho_line = phi0 + alphas * rho * dphi0
     phi_val = np.zeros_like(alphas) #phi(alpha)
     dphi_val = np.zeros_like(alphas) #phi'(alpha)
@@ -68,7 +68,7 @@ def plot_phi(f: Callable[Concatenate[npt.ArrayLike,...],float],
     phi_val_acc= phi_val[wp2_i:gs1_i]
     i_best = np.argmin(phi_val_acc)
     ax.set_xticks([alphas[gs1_i],alphas[wp2_i],alphas[i_best+wp2_i]],
-                  [f"b = {b:.2f}",f"a = {b:.2f}",f"{alphas[i_best+wp2_i]:.2f}"])
+                  [f"b = {b:.2f}",f"a = {a:.2f}",f"{alphas[i_best+wp2_i]:.2f}"])
     
 if __name__ == '__main__':
     def f(x,r):
