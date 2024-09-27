@@ -121,6 +121,19 @@ class QuasiNewtonOptimizer(Optimizer):
                stop_threshold = 1e-6,
                line_search = "none",
                hessian_init = "identity"):
+    """Generic class for a Quasi Newton optimizer.
+
+    Args:
+        problem (OptimizationProblem): Optimization problem to solve for
+        stop_threshold (float, optional): Stopping threshold for the iterations. Defaults to 1e-6.
+        line_search (str, optional): Type of line search performed. Defaults to "none".
+          - "none": No line search.
+          - "exact": Exact line search.
+          - "inexact": Inexact line search.
+        hessian_init (str, optional): How to initialize the inverse of the Hessian. Defaults to "identity".
+          - "identity": Initialize with the identity matrix.
+          - "fd" or "finite_diff": Initialize the Hessian with a finite difference approximation.
+    """
     super().__init__(problem,stop_threshold,line_search)
     #Specify if H corresponds to the Hessian or the inverse Hessian
     self.H_type = "inverse" 
@@ -187,9 +200,6 @@ class GoodBroyden(QuasiNewtonOptimizer):
 
 
 class BadBroyden(QuasiNewtonOptimizer):
-  
-    def __init__(self,problem,stop_threshold = 1e-6,line_search = "none"):
-      super().__init__(problem,stop_threshold,line_search)
       
     def calculate_H(self, H, gnew, g, xnew, x):
         """
