@@ -1,6 +1,6 @@
-from finite_diff import finite_difference
+from Project2.finite_diff import finite_difference
 import numpy as np
-from optimization import OptimizationProblem
+from Project2.optimization import OptimizationProblem
 from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
 
@@ -312,6 +312,6 @@ if __name__ == '__main__':
     print(f'hesstest: {hesstest}')
     print(f'gradtest: {gradtest}')
 
-    optimizer = DFP(problem,1e-9,"inexact")
+    optimizer = DFP(problem,1e-9,"none")
     optimizer.solve(np.array([-100,900]),7)
     print(f'optimizer.xhist: {optimizer.xhist}')
