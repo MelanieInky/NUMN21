@@ -117,10 +117,16 @@ class NewtonOptimizer(Optimizer):
     return s
 
 class QuasiNewtonOptimizer(Optimizer):
-  def __init__(self,problem,stop_threshold = 1e-6,line_search = "none"):
+  def __init__(self,problem,
+               stop_threshold = 1e-6,
+               line_search = "none",
+               hessian_init = "identity"):
     super().__init__(problem,stop_threshold,line_search)
     #Specify if H corresponds to the Hessian or the inverse Hessian
     self.H_type = "inverse" 
+    
+    #Define how to initialize the hessian
+    self.hessian_init = hessian_init 
     pass
   
   def calculate_s(self):
@@ -132,13 +138,19 @@ class QuasiNewtonOptimizer(Optimizer):
       self.H = self.calculate_H(H,self.gnew,self.g,xnew,x)
     except AttributeError: #In the case of the first step, do the usual stuff
       xnew = self.xhist[-1] 
-      #hessian = finite_difference(self.problem.gradf,xnew,problem.epsilon,**self.problem.kwargs)
       self.gnew = self.problem.gradf(xnew,**problem.kwargs)
-      hessian = np.identity(len(self.gnew)) #Identity as an init?
-      if(self.H_type == 'inverse'):
-        self.H = np.linalg.inv(hessian)
-      else:
-        self.H = hessian
+      if(self.hessian_init == "finite_diff" or self.hessian_init == "fd"):
+        hessian = finite_difference(self.problem.gradf,
+                                    xnew,
+                                    self.problem.epsilon,
+                                    **self.problem.kwargs)
+        if(self.H_type == 'inverse'):
+          self.H = np.linalg.inv(hessian)
+        else:
+          self.H = hessian
+      elif(self.hessian_init == "identity"):
+        self.H = np.identity(len(self.gnew))
+
     if(self.H_type == 'inverse'):
       s = - self.H@self.gnew
     else:
@@ -243,9 +255,10 @@ class DFP(QuasiNewtonOptimizer):
     
 class BFGS(QuasiNewtonOptimizer):
     #Overloading the init to precise we compute the Hessian
-    def __init__(self,problem,stop_threshold = 1e-6):
+    def __init__(self,problem,stop_threshold = 1e-6,hessian_init = "identity"):
       super().__init__(problem,stop_threshold)
-      self.H_type = "hessian" 
+      self.H_type = "hessian"
+      self.hessian_init = hessian_init
       pass
   
     def calculate_H(self, H, gnew, g, xnew, x):
@@ -312,6 +325,6 @@ if __name__ == '__main__':
     print(f'hesstest: {hesstest}')
     print(f'gradtest: {gradtest}')
 
-    optimizer = DFP(problem,1e-9,"none")
+    optimizer = DFP(problem,1e-9,"none","fd")
     optimizer.solve(np.array([-100,900]),7)
     print(f'optimizer.xhist: {optimizer.xhist}')
