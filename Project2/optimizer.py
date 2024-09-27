@@ -5,18 +5,21 @@ from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
 
 class Optimizer(ABC):
-  def __init__(self,problem,stop_threshold = 1e-6):
+  def __init__(self,problem,stop_threshold = 1e-6,line_search = "none"):
     self.problem = problem
     self.stop_threshold = 1e-6
+    self.line_search = line_search
     pass
 
-  def exact_line_search(x, s):
+  def exact_line_search(self,x, s):
+    problem = self.problem
     def dphi(alpha):
       return problem.gradf(x - alpha * s, **problem.kwargs)
     alpha_new = fsolve(dphi, [1, 1])
     return alpha_new
 
-  def inexact_line_search(x, s):
+  def inexact_line_search(self,x, s):
+    problem = self.problem
     sigma = 0.9 #0.9 for weak, 0.1 for fairly accurate line search?
     rho = 0.01  #p30
     tau2 = 1/10 #p36
@@ -75,8 +78,13 @@ class Optimizer(ABC):
   
 
   def step(self,x):
-    s = self.calculate_s()
-    alpha = 1 #To be added, find with line search
+    s = self.calculate_s() #Search direction
+    if(self.line_search == "none"):
+      alpha = 1
+    elif(self.line_search == "exact"):
+      alpha = self.exact_line_search(x,s)
+    elif(self.line_search == "inexact"):
+      alpha = self.inexact_line_search(x,s)
     x = x + alpha * s
     stop = np.linalg.norm(s) < self.stop_threshold
     return x, stop
@@ -109,8 +117,8 @@ class NewtonOptimizer(Optimizer):
     return s
 
 class QuasiNewtonOptimizer(Optimizer):
-  def __init__(self,problem,stop_threshold = 1e-6):
-    super().__init__(problem,stop_threshold)
+  def __init__(self,problem,stop_threshold = 1e-6,line_search = "none"):
+    super().__init__(problem,stop_threshold,line_search)
     #Specify if H corresponds to the Hessian or the inverse Hessian
     self.H_type = "inverse" 
     pass
@@ -168,8 +176,8 @@ class GoodBroyden(QuasiNewtonOptimizer):
 
 class BadBroyden(QuasiNewtonOptimizer):
   
-    def __init__(self,problem,stop_threshold = 1e-6):
-      super().__init__(problem,stop_threshold)
+    def __init__(self,problem,stop_threshold = 1e-6,line_search = "none"):
+      super().__init__(problem,stop_threshold,line_search)
       
     def calculate_H(self, H, gnew, g, xnew, x):
         """
@@ -304,6 +312,6 @@ if __name__ == '__main__':
     print(f'hesstest: {hesstest}')
     print(f'gradtest: {gradtest}')
 
-    optimizer = DFP(problem,1e-9)
+    optimizer = DFP(problem,1e-9,"inexact")
     optimizer.solve(np.array([-100,900]),7)
     print(f'optimizer.xhist: {optimizer.xhist}')
