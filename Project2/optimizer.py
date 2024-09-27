@@ -5,8 +5,9 @@ from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
 
 class Optimizer(ABC):
-  def __init__(self,problem):
+  def __init__(self,problem,stop_threshold = 1e-6):
     self.problem = problem
+    self.stop_threshold = 1e-6
     pass
 
   def exact_line_search(x, s):
@@ -99,10 +100,6 @@ class Optimizer(ABC):
     pass
 
 class NewtonOptimizer(Optimizer):
-  def __init__(self,problem,stop_threshold = 1e-6):
-    super().__init__(problem)
-    self.stop_threshold = stop_threshold
-    pass
 
   def calculate_s(self):
     x = self.xhist[-1] 
@@ -112,13 +109,44 @@ class NewtonOptimizer(Optimizer):
     return s
 
 class QuasiNewtonOptimizer(Optimizer):
-  def __init__(self,problem):
-    super().__init__(problem)
+  def __init__(self,problem,stop_threshold = 1e-6):
+    super().__init__(problem,stop_threshold)
+    #Specify if H corresponds to the Hessian or the inverse Hessian
+    self.H_type = "inverse" 
     pass
+  
+  def calculate_s(self):
+    try: #If H already exists
+      H = self.H
+      xnew = self.xhist[-1]
+      x = self.xhist[-2]
+      #TODO, don't compute the gradient twice, save it instead!
+      gnew = self.problem.gradf(xnew,**self.problem.kwargs)
+      g = self.problem.gradf(x,**self.problem.kwargs)
+      self.H = self.calculate_H(H,gnew,g,xnew,x)
+    except AttributeError: #In the case of the first step, do the usual stuff
+      xnew = self.xhist[-1] 
+      hessian = finite_difference(self.problem.gradf,xnew,problem.epsilon,**self.problem.kwargs)
+      gnew = self.problem.gradf(xnew,**problem.kwargs)
+      if(self.H_type == 'inverse'):
+        self.H = np.linalg.inv(hessian)
+      else:
+        self.H = hessian
+    if(self.H_type == 'inverse'):
+      s = - self.H@gnew
+    else:
+      s = - np.linalg.solve(self.H,gnew)
+    return s
+  
+  @abstractmethod
+  def calculate_H(self):
+    pass
+    
 
 
 
-class GoodBroyden(Optimizer):
+class GoodBroyden(QuasiNewtonOptimizer):
+
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
@@ -138,14 +166,18 @@ class GoodBroyden(Optimizer):
         return Hnew
 
 
-class BadBroyden(Optimizer):
+class BadBroyden(QuasiNewtonOptimizer):
+  
+    def __init__(self,problem,stop_threshold = 1e-6):
+      super().__init__(problem,stop_threshold)
+      
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
 
         - H: Inverse Hessian
-        - g: gradient of objective funtion at the previous point x
-        - gnew: gradient of objective funtion at the new point xnew
+        - g: gradient of objective function at the previous point x
+        - gnew: gradient of objective function at the new point xnew
         - x: The current/previous point in the parameter space before the update
         - xnew: The new point in the parameter space
         """
@@ -158,14 +190,14 @@ class BadBroyden(Optimizer):
 
         return Hnew
     
-class SymmetricBroyden(Optimizer):
+class SymmetricBroyden(QuasiNewtonOptimizer):
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
 
         - H: Inverse Hessian
-        - g: gradient of objective funtion at the previous point x
-        - gnew: gradient of objective funtion at the new point xnew
+        - g: gradient of objective function at the previous point x
+        - gnew: gradient of objective function at the new point xnew
         - x: The current/previous point in the parameter space before the update
         - xnew: The new point in the parameter space
         """
@@ -182,7 +214,7 @@ class SymmetricBroyden(Optimizer):
 
         return Hnew
 
-class DFP(Optimizer):
+class DFP(QuasiNewtonOptimizer):
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
@@ -201,7 +233,13 @@ class DFP(Optimizer):
         Hnew = H + (d @ d.T) / (d.T @ y) - (H @ y @ y.T @ H) / (y.T @ H @ y)    #update
         return Hnew        
     
-class BFGS(Optimizer):
+class BFGS(QuasiNewtonOptimizer):
+    #Overloading the init to precise we compute the Hessian
+    def __init__(self,problem,stop_threshold = 1e-6):
+      super().__init__(problem,stop_threshold)
+      self.H_type = "hessian" 
+      pass
+  
     def calculate_H(self, H, gnew, g, xnew, x):
         d = xnew - x    #displacement between the new point xnew and the old point x
         y = gnew - g    #difference between in gradients between the new point xnew and the old point x
@@ -266,8 +304,6 @@ if __name__ == '__main__':
     print(f'hesstest: {hesstest}')
     print(f'gradtest: {gradtest}')
 
-    optimizer = NewtonOptimizer(problem,1e-8)
-    optimizer.solve(np.array([-8,6]),2)
+    optimizer = GoodBroyden(problem,1e-9)
+    optimizer.solve(np.array([-8,6]),4)
     print(f'optimizer.xhist: {optimizer.xhist}')
-
-    #blabkla
