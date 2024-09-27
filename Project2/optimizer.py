@@ -1,9 +1,9 @@
 from finite_diff import finite_difference
 import numpy as np
 from optimization import OptimizationProblem
+from abc import ABC, abstractmethod
 
-
-class Optimizer:
+class Optimizer(ABC):
   def __init__(self,problem):
     self.problem = problem
     pass
@@ -16,6 +16,7 @@ class Optimizer:
     stop = np.linalg.norm(s) < self.stop_threshold
     return x, stop
   
+  @abstractmethod
   def calculate_s(self):
     pass
   
