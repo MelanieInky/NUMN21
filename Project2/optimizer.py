@@ -51,10 +51,32 @@ class QuasiNewtonOptimizer(Optimizer):
   def __init__(self,problem):
     super().__init__(problem)
     pass
+  
+  def calculate_s(self):
+    try: #If H already exists
+      xnew = self.xhist[-1]
+      x = self.xhist[-2]
+      H = self.H
+      #TODO, don't compute the gradient twice, save it instead!
+      gnew = self.problem.gradf(xnew,self.problem.kwargs)
+      g = self.problem.gradf(x,self.problem.kwargs)
+      self.H = self.calculate_H(H,gnew,g,xnew,x)
+    except AttributeError: #In the case of the first step, do the usual stuff
+      xnew = self.xhist[-1] 
+      hessian = finite_difference(problem.gradf,x,problem.epsilon,**problem.kwargs)
+      grad = problem.gradf(xnew,**problem.kwargs)
+      self.H = np.linalg.inv(hessian)
+    s = - self.H@grad
+    return s
+  
+  @abstractmethod
+  def calculate_H(self):
+    pass
+    
 
 
 
-class GoodBroyden(Optimizer):
+class GoodBroyden(QuasiNewtonOptimizer):
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
@@ -74,14 +96,14 @@ class GoodBroyden(Optimizer):
         return Hnew
 
 
-class BadBroyden(Optimizer):
+class BadBroyden(QuasiNewtonOptimizer):
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
 
         - H: Inverse Hessian
-        - g: gradient of objective funtion at the previous point x
-        - gnew: gradient of objective funtion at the new point xnew
+        - g: gradient of objective function at the previous point x
+        - gnew: gradient of objective function at the new point xnew
         - x: The current/previous point in the parameter space before the update
         - xnew: The new point in the parameter space
         """
@@ -94,14 +116,14 @@ class BadBroyden(Optimizer):
 
         return Hnew
     
-class SymmetricBroyden(Optimizer):
+class SymmetricBroyden(QuasiNewtonOptimizer):
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
 
         - H: Inverse Hessian
-        - g: gradient of objective funtion at the previous point x
-        - gnew: gradient of objective funtion at the new point xnew
+        - g: gradient of objective function at the previous point x
+        - gnew: gradient of objective function at the new point xnew
         - x: The current/previous point in the parameter space before the update
         - xnew: The new point in the parameter space
         """
@@ -118,7 +140,7 @@ class SymmetricBroyden(Optimizer):
 
         return Hnew
 
-class DFP(Optimizer):
+class DFP(QuasiNewtonOptimizer):
     def calculate_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
@@ -137,7 +159,7 @@ class DFP(Optimizer):
         Hnew = H + (d @ d.T) / (d.T @ y) - (H @ y @ y.T @ H) / (y.T @ H @ y)    #update
         return Hnew        
     
-class BFGS(Optimizer):
+class BFGS(QuasiNewtonOptimizer):
     def calculate_H(self, H, gnew, g, xnew, x):
         d = xnew - x    #displacement between the new point xnew and the old point x
         y = gnew - g    #difference between in gradients between the new point xnew and the old point x
