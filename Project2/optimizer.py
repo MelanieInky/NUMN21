@@ -8,9 +8,17 @@ class Optimizer:
     self.problem = problem
     pass
 
-  def step(self,x):
-    pass
 
+  def step(self,x):
+    s = self.calculate_s()
+    alpha = 1 #To be added, find with line search
+    x = x + alpha * s
+    stop = np.linalg.norm(s) < self.stop_threshold
+    return x, stop
+  
+  def calculate_s(self):
+    pass
+  
   def solve(self,x0, max_iter = 20):
     x = x0
     self.xhist = [x]
@@ -31,44 +39,19 @@ class NewtonOptimizer(Optimizer):
     self.stop_threshold = stop_threshold
     pass
 
-  def step(self,x):
+  def calculate_s(self):
+    x = self.xhist[-1] 
     hessian = finite_difference(problem.gradf,x,problem.epsilon,**problem.kwargs)
     grad = problem.gradf(x,**problem.kwargs)
-    dx = np.linalg.solve(hessian,grad)
-    x = x - dx
-    stop = np.linalg.norm(dx) < self.stop_threshold
-    return x, stop
-    pass
+    s = -np.linalg.solve(hessian,grad)
+    return s
 
 class QuasiNewtonOptimizer(Optimizer):
   def __init__(self,problem):
     super().__init__(problem)
     pass
 
-  def step(self,x0):
-    pass
 
-
-if __name__ == '__main__':
-    
-    def g(x,r):
-        return np.sum(r*x**2)
-
-    def grad_g(x,r):
-        return r*2*x
-
-    epsilon = 1e-6
-    problem = OptimizationProblem(g, gradf = grad_g, r = 2)
-    gradtest = problem.gradf(np.array([1,2]),**problem.kwargs)
-    hesstest = finite_difference(problem.gradf,np.array([1,2]),epsilon,**problem.kwargs)
-    print(f'hesstest: {hesstest}')
-    print(f'gradtest: {gradtest}')
-
-    optimizer = NewtonOptimizer(problem,1e-8)
-    optimizer.solve(np.array([-8,6]),2)
-    print(f'optimizer.xhist: {optimizer.xhist}')
-
-    #blabkla
 
 class GoodBroyden(Optimizer):
     def calculate_H(self, H, gnew, g, xnew, x):
@@ -201,3 +184,25 @@ class BFGS(Optimizer):
                 break
 
         return x_list  
+      
+      
+if __name__ == '__main__':
+    
+    def g(x,r):
+        return np.sum(r*x**2)
+
+    def grad_g(x,r):
+        return r*2*x
+
+    epsilon = 1e-6
+    problem = OptimizationProblem(g, gradf = grad_g, r = 2)
+    gradtest = problem.gradf(np.array([1,2]),**problem.kwargs)
+    hesstest = finite_difference(problem.gradf,np.array([1,2]),epsilon,**problem.kwargs)
+    print(f'hesstest: {hesstest}')
+    print(f'gradtest: {gradtest}')
+
+    optimizer = NewtonOptimizer(problem,1e-8)
+    optimizer.solve(np.array([-8,6]),2)
+    print(f'optimizer.xhist: {optimizer.xhist}')
+
+    #blabkla
