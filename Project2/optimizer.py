@@ -1,6 +1,7 @@
 from finite_diff import finite_difference
 import numpy as np
 from optimization import OptimizationProblem
+from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
 
 class Optimizer(ABC):
@@ -9,6 +10,69 @@ class Optimizer(ABC):
     self.stop_threshold = 1e-6
     pass
 
+  def exact_line_search(x, s):
+    def dphi(alpha):
+      return problem.gradf(x - alpha * s, **problem.kwargs)
+    alpha_new = fsolve(dphi, [1, 1])
+    return alpha_new
+
+  def inexact_line_search(x, s):
+    sigma = 0.9 #0.9 for weak, 0.1 for fairly accurate line search?
+    rho = 0.01  #p30
+    tau2 = 1/10 #p36
+    tau3 = 1/2  #p36
+    f_ = 0      #lower bound f(alpha)?
+    f0 = problem.f(x - s, **problem.kwargs)
+    df0 = problem.gradf(x - s, **problem.kwargs)
+    mu = (f_ - f0) / (rho * df0)
+    alpha = mu  #0 < a_1 <= mu?
+    alpha_old = 0
+    B = 0
+    for i in range(10):
+      alpha_old = alpha
+      alpha = alpha_new
+      fa = problem.f(x - alpha * s, **problem.kwargs)
+      if fa <= f_:
+        break
+      fa_old = problem.f(x - alpha_old * s, **problem.kwargs)
+      dfa = problem.gradf(x - alpha * s, **problem.kwargs)
+      if fa > f0 + alpha * df0 or fa >= fa_old:
+        a = alpha_old
+        b = alpha
+        B = 1
+        break
+      if abs(dfa) <= - sigma * df0:
+        break
+      if dfa >= 0:
+        a = alpha
+        b = alpha_old
+        B = 1
+        break
+      if mu <= 2 * alpha - alpha_old:
+        alpha_new = mu
+      else:
+        alpha_new = 2 * alpha - alpha_old # in [2 * alpha - alpha_old, min(mu, alpha + tau1 * (alpha - alpha_old))?
+    if B == 1:
+      for i in range(10):
+        alpha = a + tau2 * (b - a) # in [a + tau2 * (b - a), b - tau3 * (b - a)]
+        fa = problem.f(x - alpha * s, **problem.kwargs)
+        f_a = problem.f(x - a * s, **problem.kwargs)
+        if fa > f0 + rho * alpha * df0 or fa >= f_a:
+          a_new = a
+          b_new = alpha
+          break
+        else:
+          dfa = problem.gradf(x - alpha * s, **problem.kwargs)
+          if abs(dfa) <= - sigma * df0:
+            break
+          a_new = alpha
+          if (b - a) * dfa >= 0:
+            b_new = a
+          else:
+            b_new = b
+    return alpha
+    
+  
 
   def step(self,x):
     s = self.calculate_s()
