@@ -4,7 +4,7 @@ Quadrature functions that should be useful.
 import numpy as np
 
 
-def quadrature(f,x_list,w,c,t1,t2,gradf = None):
+def quadrature(f,x_list,w,c,t1,t2,grad_f = None):
     """Generic formula to estimate the integral from t1 to t2 of f(x,t)
 
     Args:
@@ -14,7 +14,7 @@ def quadrature(f,x_list,w,c,t1,t2,gradf = None):
         - c (_type_): Vector used to offset the time values
         - t1 (_type_): Lower time bound of the integral
         - t2 (_type_): Upper time bound of the integral
-        - gradf: Gradient of f w.r.t x, return the gradient w.r.t the x coordinate as well,
+        - grad_f: Gradient of f w.r.t x, return the gradient w.r.t the x_list coordinates as well,
         if specified.
         
         
@@ -28,16 +28,28 @@ def quadrature(f,x_list,w,c,t1,t2,gradf = None):
     h = t2-t1
     w = np.squeeze(w) #making sure there are no empty dimensions
     c = np.squeeze(c)
-    n_points = x_list.shape[0]
+    
+    k = x_list.shape[0]
+    n = x_list.shape[1]
     if(len(w.shape) != 1 or len(c.shape) != 1):
         raise Exception("w and c should be one dimensional")
-    if(w.shape[0] != n_points or c.shape[0] != n_points):
+    if(w.shape[0] != k or c.shape[0] != k):
         raise Exception("w and c should have the same lengths equal to the one of x_list")
+    if(grad_f is not None):
+        grad_quad = np.zeros(k*n)
+    
     quad = 0
-    for i in range(len(c)):
-        quad+= w[i] * f(x_list[i],t1 + c[i]*h) 
+    for i in range(k):
+        t = t1 + c[i]*h
+        quad+= w[i] * f(x_list[i],t)
+        if(grad_f is not None):
+            grad_quad[n*i:n*(i+1)] = w[i] * grad_f(x_list[i],t)
+    
     quad *= h
-    return quad
+    if(grad_f is not None):
+        grad_quad *= h
+        return quad, grad_quad
+    return quad , None
 
 
 
@@ -48,19 +60,36 @@ if __name__=='__main__':
     x_list = np.zeros((2,3))
     w = [1/2,1/2]
     c = [0,1]
-    test = quadrature(f,x_list,w,c,1,2)
+    test, _= quadrature(f,x_list,w,c,1,2)
     print(f'Testing trap rule: exp: 1.5, got = {test}') #Should be 1.5
     
     def g(x,t):
         return t**2
 
     #Simpson rule should integrate g exactly
-    t1 = 5
-    t2 = 9
+    t1 = -2
+    t2 = 4
     x_list = np.zeros((3,12))
     w = [1/6,4/6,1/6]
     c = [0,0.5,1]
-    test = quadrature(g,x_list,w,c,t1,t2)
-    print(f'Testing simpson rule: exp: {t2**3/3-t1**3/3}, got = {test}') #Should be 1.5
+    test , _ = quadrature(g,x_list,w,c,t1,t2)
+    print(f'Testing simpson rule: exp: {t2**3/3-t1**3/3}, got = {test}')
+    
+    def h(x,t):
+        return np.sum(x**2) + t
+    
+    def grad_h(x,t):
+        return 2*x
+    
+    n = 12
+    x_list = np.arange(3*n).reshape((3,n))
+    grad_expected = 2*x_list.flatten()
+    grad_expected = grad_expected *  np.repeat([1/6,4/6,1/6],n)
+    t1 , t2 = 0,1
+    test , grad_test = quadrature(g,x_list,w,c,t1,t2,grad_h)
+    diff_norm = np.linalg.norm(grad_expected-grad_test)
+    print(f"Testing the gradient, norm of the diff between expected and computed: {diff_norm}")
+    
+    
     
     
