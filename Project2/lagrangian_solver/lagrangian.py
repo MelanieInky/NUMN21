@@ -1,6 +1,6 @@
 from quadratures import quadrature
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 class LagrangianProblem:
     def __init__(self,K,V,grad_K,grad_V) -> None:
@@ -45,9 +45,9 @@ class LagrangianProblem:
             t1 (_type_): Initial time
             t2 (_type_): Final time
         """
-        if(method == "Simpson"):
-            w = [1/6,4/6,1/6]
-            c = [0,1/2,1]
+        if(method == "simpson"):
+            w = np.array([1/6,4/6,1/6])
+            c = np.array([0,1/2,1])
         else:
             raise NotImplementedError("Unknown quadrature method")
         
@@ -56,14 +56,55 @@ class LagrangianProblem:
         x_dot_list[0] = x_dot_init
         #Calculate the speed vector list first.
         t_list = t1 + c*t2
-        for k in range(1,np.shape(x_list)[1]):
-            x_dot_list[k] = self.get_velocity(x_list[k-1:k],t_list[k-1:k])
-        
-        
-        self.S = quadrature(self.L,x_list,w,c,t1,t2,self.grad_L)
-        return self.S
+        for k in range(1,np.shape(x_list)[0]):
+            x_dot_list[k] = self.get_velocity(x_list[k-1:k+1],t_list[k-1:k+1])
+        self.action, _ = quadrature(self.L,x_list,x_dot_list,w,c,t1,t2,self.grad_L)
+        return self.action
         
 
 if __name__ == "__main__":
+    m = 1
+    g = 10
+    def K(x,x_dot,t):
+        return 1/2 *m* x_dot**2
     
+    def V(x,x_dot,t):
+        return m*g*x
+    
+    def gradK(x,x_dot,t):
+        return 0
+    
+    def gradV(x,x_dot,t):
+        return m*g
+    
+    
+    test = LagrangianProblem(K,V,gradK,gradV)
+    
+    #Higher T makes for some bigger error.
+    T = 0.05
+    
+    variations = np.linspace(-1,1,50)
+    actions = np.zeros_like(variations)
+    
+    x_list = np.array([[0],[-1/2*g*(T/2)**2],[-1/2*g*T**2]])
+    x_dot_init = np.array([0])
+    
+    #Variation in midpoint
+    for i , eps in enumerate(variations):
+        x_list_tmp = np.copy(x_list)
+        x_list_tmp[1] += eps
+        actions[i] = test.S(x_list_tmp,x_dot_init,0,T)
+    
+    plt.figure()
+    plt.plot(variations,actions) #The minimum is clearly at 0 variation
+    
+    #Variation in endpoint
+    for i , eps in enumerate(variations):
+        x_list_tmp = np.copy(x_list)
+        x_list_tmp[2] += eps
+        actions[i] = test.S(x_list_tmp,x_dot_init,0,T)
+    
+    plt.figure()
+    plt.plot(variations,actions) #The minimum is clearly at 0 variation
+    pass
     
