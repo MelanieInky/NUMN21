@@ -330,7 +330,7 @@ class BFGS(QuasiNewtonOptimizer):
             x_list.append(xnew)
 
             # self.points.append(copy.deepcopy(xnew))
-            if self.check_criterion(x, xnew, g):
+            if self.check_criterion(x, xnew, g):  #should be replaced by our step function above but not sure
                 self.success = True
                 self.xmin = xnew
                 break
@@ -384,7 +384,7 @@ class CompareBFGS(QuasiNewtonOptimizer):
             x_list.append(xnew)
 
             # self.points.append(copy.deepcopy(xnew))
-            if self.check_criterion(x, xnew, g):
+            if self.check_criterion(x, xnew, g):  #should be replaced by our step function above but not sure
                 self.success = True
                 self.xmin = xnew
                 break
