@@ -307,11 +307,11 @@ class BFGS(QuasiNewtonOptimizer):
         return Hnew
 
     def optimize(self, x0):
-        x_list = [x0]
-        n = x0.shape[0]
-        xnew = x0
-        gnew = self.problem.gradient_function(x0)
-        Hnew = np.eye(n)
+        x_list = [x0] #Initializes a list to store the sequence of points 
+        n = x0.shape[0] #Dimensionality of the problem
+        xnew = x0 #Sets the initial point
+        gnew = self.problem.gradient_function(x0) #Computes the gradient at the initial point
+        Hnew = np.eye(n)  #Initializes the Hessian as the identity matrix
         # self.points.append(copy.deepcopy(xnew))
 
         for _ in range(self.max_iterations):
@@ -337,7 +337,60 @@ class BFGS(QuasiNewtonOptimizer):
 
         return x_list  
       
-      
+class CompareBFGS(QuasiNewtonOptimizer):
+    def calculate_H(self, H, gnew, g, xnew, x):
+        d = xnew - x
+        y = gnew - g
+        d = np.reshape(d, (d.shape[0], 1))
+        y = np.reshape(y, (y.shape[0], 1))
+
+        dTy = d.T @ y
+        dyT = d @ y.T
+
+        Hnew = (
+            H
+            + (1 + (y.T @ H @ y) / dTy) * (d @ d.T) / dTy
+            - (dyT @ H + H @ y @ d.T) / (dTy)
+        )
+
+        return Hnew
+
+    def optimize(self, x0, analytic_H): #need fixing(not sure what to replace analtic_H with)
+        x_list = [x0] #Initializes a list to store the sequence of points 
+        n = x0.shape[0] #Dimensionality of the problem
+        xnew = x0 #Sets the initial point
+        gnew = self.problem.gradient_function(x0) #Computes the gradient at the initial point
+        Hnew = np.eye(n)  #Initializes the Hessian as the identity matrix
+        # self.points.append(copy.deepcopy(xnew))
+
+        for _ in range(self.max_iterations):
+            x = xnew
+            g = gnew
+            H = Hnew
+            # print(H)
+
+            s = -Hnew @ gnew
+
+            alpha, *_ = self.line_search.search(x, s)
+
+            xnew = x + alpha * s
+            gnew = self.problem.gradient_function(xnew)
+            Hnew = self.calculate_H(H, gnew, g, xnew, x)
+            Hanalytic = analytic_H(xnew)  #need fixing(not sure what to replace analtic_H with)
+            Hdiff = np.linalg.inv(self.problem.hessian_function(xnew)) #need fixing(not sure what to replace w/ self.problem.hessian_function)
+            diff = np.linalg.norm(Hnew - Hdiff)
+            print(diff) #result for Q12
+
+            x_list.append(xnew)
+
+            # self.points.append(copy.deepcopy(xnew))
+            if self.check_criterion(x, xnew, g):
+                self.success = True
+                self.xmin = xnew
+                break
+
+        return x_list   
+
 if __name__ == '__main__':
     
     def g(x,r):
