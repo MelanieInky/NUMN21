@@ -1,6 +1,8 @@
-from Project2.finite_diff import finite_difference
+#from Project2.finite_diff import finite_difference
+from finite_diff import finite_difference
 import numpy as np
-from Project2.optimization import OptimizationProblem
+#from Project2.optimization import OptimizationProblem
+from optimization import OptimizationProblem
 from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
 
@@ -14,59 +16,70 @@ class Optimizer(ABC):
   def exact_line_search(self,x, s):
     problem = self.problem
     def dphi(alpha):
-      return problem.gradf(x - alpha * s, **problem.kwargs)
-    alpha_new = fsolve(dphi, [1, 1])
+      return np.dot(s,problem.gradf(x + alpha * s, **problem.kwargs))
+    alpha_new = fsolve(dphi, 1)
     return alpha_new
 
   def inexact_line_search(self,x, s):
     problem = self.problem
-    sigma = 0.9 #0.9 for weak, 0.1 for fairly accurate line search?
+    sigma = 0.1 #0.9 for weak, 0.1 for fairly accurate line search?
     rho = 0.01  #p30
     tau2 = 1/10 #p36
     tau3 = 1/2  #p36
-    f_ = 0      #lower bound f(alpha)?
-    f0 = problem.f(x - s, **problem.kwargs)
-    df0 = problem.gradf(x - s, **problem.kwargs)
+
+    def dphi(alpha):
+      return np.dot(s,problem.gradf(x + alpha * s, **problem.kwargs))
+    
+    def phi(alpha,**kwargs):
+       return problem.f(x + alpha * s, **kwargs)
+    
+    f0 = problem.f(x, **problem.kwargs)
+    f_= -10
+    df0 = dphi(0)
     mu = (f_ - f0) / (rho * df0)
-    alpha = mu  #0 < a_1 <= mu?
+    alpha_new = mu/2  #0 < a_1 <= mu?
+    alpha = mu/2
     alpha_old = 0
     B = 0
     for i in range(10):
-      alpha_old = alpha
-      alpha = alpha_new
-      fa = problem.f(x - alpha * s, **problem.kwargs)
+      fa = problem.f(x + alpha * s, **problem.kwargs)
       if fa <= f_:
         break
-      fa_old = problem.f(x - alpha_old * s, **problem.kwargs)
-      dfa = problem.gradf(x - alpha * s, **problem.kwargs)
-      if fa > f0 + alpha * df0 or fa >= fa_old:
+      fa_old = problem.f(x + alpha_old * s, **problem.kwargs)
+      dfa = dphi(alpha)
+      if (fa > f0 + alpha * df0).any() or (fa >= fa_old).any():
         a = alpha_old
         b = alpha
         B = 1
         break
-      if abs(dfa) <= - sigma * df0:
+      if (abs(dfa) <= - sigma * df0).any():
         break
-      if dfa >= 0:
+      if (dfa >= 0).any():
         a = alpha
         b = alpha_old
         B = 1
         break
-      if mu <= 2 * alpha - alpha_old:
+      if (mu <= 2 * alpha - alpha_old).any():
         alpha_new = mu
       else:
         alpha_new = 2 * alpha - alpha_old # in [2 * alpha - alpha_old, min(mu, alpha + tau1 * (alpha - alpha_old))?
+      alpha_old = alpha
+      alpha = alpha_new
     if B == 1:
-      for i in range(10):
+      a_new = a
+      b_new = b
+      for i in range(20):
+        a = a_new
+        b = b_new
         alpha = a + tau2 * (b - a) # in [a + tau2 * (b - a), b - tau3 * (b - a)]
-        fa = problem.f(x - alpha * s, **problem.kwargs)
-        f_a = problem.f(x - a * s, **problem.kwargs)
-        if fa > f0 + rho * alpha * df0 or fa >= f_a:
+        fa = problem.f(x + alpha * s, **problem.kwargs)
+        f_a = problem.f(x + a * s, **problem.kwargs)
+        if (fa > f0 + rho * alpha * df0).any() or (fa >= f_a).any():
           a_new = a
           b_new = alpha
-          break
         else:
-          dfa = problem.gradf(x - alpha * s, **problem.kwargs)
-          if abs(dfa) <= - sigma * df0:
+          dfa = dphi(alpha)
+          if (abs(dfa) <= - sigma * df0).any():
             break
           a_new = alpha
           if (b - a) * dfa >= 0:
@@ -75,8 +88,6 @@ class Optimizer(ABC):
             b_new = b
     return alpha
     
-  
-
   def step(self,x):
     s = self.calculate_s() #Search direction
     if(self.line_search == "none"):
@@ -333,11 +344,12 @@ if __name__ == '__main__':
         return np.sum(r*x**2)
 
     def grad_g(x,r):
+        print(x)
         return r*2*x
 
     epsilon = 1e-6
     problem = OptimizationProblem(g, gradf = grad_g, r = 2)
 
-    optimizer = DFP(problem,1e-9,"none","identity")
-    optimizer.solve(np.array([-100,900]),7)
+    optimizer = NewtonOptimizer(problem,1e-9,"inexact")
+    optimizer.solve(np.array([-1,1]),15)
     print(f'optimizer.xhist: {optimizer.xhist}')

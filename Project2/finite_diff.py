@@ -23,7 +23,9 @@ def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
     Returns:
         ndarray: the Jacobian of f at the point x of dimension (R^n * R^m) 
     """
-    x = x.astype(float, copy=False)
+    x = np.array(x,dtype = float)
+    x = np.atleast_1d(x)
+    print(x)
     if not kwargs:
         fx = f(x)
     else:
@@ -31,7 +33,7 @@ def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
     if len(np.asarray(fx).shape) == 0:
         fx = np.array([fx])
 
-    J = np.zeros((len(fx), len(x)))
+    J = np.zeros((len(fx), x.shape[0]))
     for i in range(len(x)):
         x_plus = x.copy()
         x_plus[i] += eps
