@@ -37,8 +37,8 @@ class Optimizer(ABC):
     f_= -10
     df0 = dphi(0)
     mu = (f_ - f0) / (rho * df0)
-    alpha_new = mu/2  #0 < a_1 <= mu?
-    alpha = mu/2
+    alpha_new = 0.1  #0 < a_1 <= mu? #p37
+    alpha = 0.1   #p37
     alpha_old = 0
     B = 0
     for i in range(10):
