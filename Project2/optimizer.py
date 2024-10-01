@@ -121,6 +121,7 @@ class Optimizer(ABC):
 class NewtonOptimizer(Optimizer):
 
   def calculate_s(self):
+    problem = self.problem
     x = self.xhist[-1] 
     hessian = finite_difference(problem.gradf,x,problem.epsilon,**problem.kwargs)
     grad = problem.gradf(x,**problem.kwargs)
@@ -401,8 +402,8 @@ if __name__ == '__main__':
         return r*2*x
 
     epsilon = 1e-6
-    problem = OptimizationProblem(g, gradf = grad_g, r = 2)
+    pb = OptimizationProblem(g, gradf = grad_g, r = 2)
 
-    optimizer = NewtonOptimizer(problem,1e-9,"inexact")
+    optimizer = NewtonOptimizer(pb,1e-9,"inexact")
     optimizer.solve(np.array([-1,1]),15)
     print(f'optimizer.xhist: {optimizer.xhist}')
