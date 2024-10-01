@@ -62,7 +62,7 @@ class Optimizer(ABC):
             sigma (float, optional): Two sided test on the slope. The lower the value, the more accurate the line search. rho<=sigma<1 Defaults to 0.1.
             tau2 (float, optional): Controls the left bound in  which values of alpha is chosen for testing after the bracketing phase. Defaults to 1/10.
             tau3 (float, optional): Controls the right bound in  which values of alpha is chosen for testing after the bracketing phase.. Defaults to 1/2.
-            alpha_init (float): Initial guess for the value of alpha
+            alpha_init (float): Initial guess to use for the value of alpha
         """
         if rho < 1 / 2 and rho > 0:
             self.rho = rho
@@ -176,35 +176,58 @@ class Optimizer(ABC):
                         b_new = b
         return alpha
 
-    def step(self, x):
-        s = self.calculate_s()  # Search direction
-        if self.line_search == "none":
-            alpha = 1
-        elif self.line_search == "exact":
-            alpha = self.exact_line_search(x, s)
-        elif self.line_search == "inexact":
-            alpha = self.inexact_line_search(x, s)
-        x = x + alpha * s
-        stop = alpha == 0
-        stop = stop or np.linalg.norm(s) < self.stop_threshold
-        return x, stop
+    def step(self, x:npt.ArrayLike):
+      """Performs a step for the optimizer
+
+      Args:
+          x (npt.ArrayLike): The current guess for x.
+
+      Returns:
+          x (nd.array), stop (bool): x is the new guess, Stop is true if the stopping criterion is hit
+      """
+      s = self.calculate_s()  # Search direction
+      if self.line_search == "none":
+          alpha = 1
+      elif self.line_search == "exact":
+          alpha = self.exact_line_search(x, s)
+      elif self.line_search == "inexact":
+          alpha = self.inexact_line_search(x, s)
+      x = x + alpha * s
+      stop = alpha == 0
+      stop = stop or np.linalg.norm(s) < self.stop_threshold
+      return x, stop
 
     @abstractmethod
     def calculate_s(self):
-        pass
+      """
+      Method that calculates the search direction
+      
+      Returns:
+          s (nd.array): Vector of the search direction
+      """
+      pass
 
-    def solve(self, x0, max_iter=20):
-        x = x0
-        self.xhist = [x]
-        for i in range(max_iter):
-            x, stop = self.step(x)
-            self.xhist.append(x)
-            if stop:
-                self.success = True
-                return x
-        self.success = False
-        print("Optimizer did not converge")
-        return x
+    def solve(self, x0:npt.ArrayLike, max_iter=20):
+      """Solve the optimization problem with the chosen optimization algorithm
+
+      Args:
+          x0 (nd.array): A 1d numpy vector with the initial guess for the solution
+          max_iter (int, optional): Maximum number of iterations to do before giving up. Defaults to 20.
+
+      Returns:
+          _type_: _description_
+      """
+      x = x0
+      self.xhist = [x]
+      for i in range(max_iter):
+          x, stop = self.step(x)
+          self.xhist.append(x)
+          if stop:
+              self.success = True
+              return x
+      self.success = False
+      print("Optimizer did not converge")
+      return x
 
 
 class NewtonOptimizer(Optimizer):
@@ -249,7 +272,7 @@ class QuasiNewtonOptimizer(Optimizer):
             xnew = self.xhist[-1]
             x = self.xhist[-2]
             self.gnew = self.problem.gradf(xnew, **self.problem.kwargs)
-            self.H = self.calculate_H(H, self.gnew, self.g, xnew, x)
+            self.H = self.update_H(H, self.gnew, self.g, xnew, x)
         except AttributeError:  # In the case of the first step, do the usual stuff
             xnew = self.xhist[-1]
             self.gnew = self.problem.gradf(xnew, **self.problem.kwargs)
@@ -280,13 +303,17 @@ class QuasiNewtonOptimizer(Optimizer):
             )
 
     @abstractmethod
-    def calculate_H(self):
-        pass
+    def update_H(self):
+      """Method that updates the approximation of the inverse of the Hessian.
+      Returns:
+          H: The updated approximation of the Hessian
+      """
+      pass
 
 
 class GoodBroyden(QuasiNewtonOptimizer):
 
-    def calculate_H(self, H, gnew, g, xnew, x):
+    def update_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
 
@@ -311,7 +338,7 @@ class GoodBroyden(QuasiNewtonOptimizer):
 
 class BadBroyden(QuasiNewtonOptimizer):
 
-    def calculate_H(self, H, gnew, g, xnew, x):
+    def update_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
 
@@ -334,7 +361,7 @@ class BadBroyden(QuasiNewtonOptimizer):
 
 
 class SymmetricBroyden(QuasiNewtonOptimizer):
-    def calculate_H(self, H, gnew, g, xnew, x):
+    def update_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
 
@@ -365,7 +392,7 @@ class SymmetricBroyden(QuasiNewtonOptimizer):
 
 
 class DFP(QuasiNewtonOptimizer):
-    def calculate_H(self, H, gnew, g, xnew, x):
+    def update_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
 
@@ -388,7 +415,7 @@ class DFP(QuasiNewtonOptimizer):
 
 class BFGS(QuasiNewtonOptimizer):
 
-    def calculate_H(self, H, gnew, g, xnew, x):
+    def update_H(self, H, gnew, g, xnew, x):
         d = xnew - x  # displacement between the new point xnew and the old point x
         y = (
             gnew - g
@@ -435,7 +462,7 @@ class BFGS(QuasiNewtonOptimizer):
 
             xnew = x + alpha * s
             gnew = self.problem.gradient_function(xnew)
-            Hnew = self.calculate_H(H, gnew, g, xnew, x)
+            Hnew = self.update_H(H, gnew, g, xnew, x)
             x_list.append(xnew)
 
             # self.points.append(copy.deepcopy(xnew))
@@ -460,7 +487,7 @@ class CompareBFGS(QuasiNewtonOptimizer):
         self.HestHist = []
         pass
 
-    def calculate_H(self, H, gnew, g, xnew, x):
+    def update_H(self, H, gnew, g, xnew, x):
         d = xnew - x
         y = gnew - g
         d = np.reshape(d, (d.shape[0], 1))
@@ -505,7 +532,7 @@ class CompareBFGS(QuasiNewtonOptimizer):
 
             xnew = x + alpha * s
             gnew = self.problem.gradient_function(xnew)
-            Hnew = self.calculate_H(H, gnew, g, xnew, x)
+            Hnew = self.update_H(H, gnew, g, xnew, x)
             Hanalytic = analytic_H(
                 xnew
             )  # need fixing(not sure what to replace analtic_H with)
