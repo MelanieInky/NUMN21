@@ -8,6 +8,9 @@ from collections.abc import Callable
 import numpy.typing as npt
 from typing import Concatenate
 import matplotlib.pyplot as plt
+from Rosenbrock import Rosenbrock, gradRosenbrock
+from optimization import OptimizationProblem
+from optimizer import NewtonOptimizer
 
 def plot_phi(f: Callable[Concatenate[npt.ArrayLike,...],float],
              x: npt.ArrayLike,s: npt.ArrayLike,
@@ -58,7 +61,8 @@ def plot_phi(f: Callable[Concatenate[npt.ArrayLike,...],float],
     fig, ax = plt.subplots()
     ax.plot(alphas,phi_val)
     ax.plot(alphas,rho_line,label = 'rho line',linestyle = '--', c = 'orange')
-    ax.plot(alpha_neighb,wp2_line,label = 'Wolfe-Powell condition 2',linestyle = '--',c = 'green')
+    #ax.plot(alpha_neighb,wp2_line,label = 'Wolfe-Powell condition 2',linestyle = '--',c = 'green')
+    ax.plot(alpha_neighb,wp2_line,label = 'Condition',linestyle = '--',c = 'green')
     ax.set_xlabel("$\\alpha$")
     ax.set_ylabel("$\\phi(\\alpha)$")
     ax.legend()
@@ -67,12 +71,26 @@ def plot_phi(f: Callable[Concatenate[npt.ArrayLike,...],float],
     a = alphas[wp2_i]
     phi_val_acc= phi_val[wp2_i:gs1_i]
     i_best = np.argmin(phi_val_acc)
+    print(alphas[i_best + wp2_i])
     ax.set_xticks([alphas[gs1_i],alphas[wp2_i],alphas[i_best+wp2_i]],
                   [f"b = {b:.2f}",f"a = {a:.2f}",f"{alphas[i_best+wp2_i]:.2f}"])
+    return fig, ax
     
 if __name__ == '__main__':
     def f(x,r):
         return x*(x + r)
     
     #Minimum at -1, direction is -1 so best alpha should be 2.
-    plot_phi(f,1,-1,sigma = 0.55,rho = 0.3,r = 2) 
+    fig, ax =plot_phi(f,1,-1,sigma = 0.55,rho = 0.3,r = 2) 
+    #plt.show()
+
+    problem = OptimizationProblem(Rosenbrock, gradf = gradRosenbrock)
+    optimizer = NewtonOptimizer(problem,1e-9,"none")
+    x = np.array([2,2])
+    s = np.array([-1,-1])
+    alpha = optimizer.inexact_line_search(x,s)
+    print(alpha)
+    fig2, ax2 = plot_phi(Rosenbrock,x,s,alpha_max=4,rho = 0.01,sigma = 0.1)
+    ax2.axvline(x = alpha,linestyle = "--")
+    plt.show()
+    
