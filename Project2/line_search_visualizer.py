@@ -8,9 +8,7 @@ from collections.abc import Callable
 import numpy.typing as npt
 from typing import Concatenate
 import matplotlib.pyplot as plt
-from Rosenbrock import Rosenbrock, gradRosenbrock
-from optimization import OptimizationProblem
-from optimizer import NewtonOptimizer
+
 
 def plot_phi(f: Callable[Concatenate[npt.ArrayLike,...],float],
              x: npt.ArrayLike,s: npt.ArrayLike,
@@ -81,6 +79,10 @@ def plot_phi(f: Callable[Concatenate[npt.ArrayLike,...],float],
     return fig, ax
     
 if __name__ == '__main__':
+    from Rosenbrock import Rosenbrock, gradRosenbrock
+    from optimization import OptimizationProblem
+    from optimizer import NewtonOptimizer
+    
     def f(x,r):
         return x*(x + r)
     
