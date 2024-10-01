@@ -163,7 +163,7 @@ class QuasiNewtonOptimizer(Optimizer):
       self.H = self.calculate_H(H,self.gnew,self.g,xnew,x)
     except AttributeError: #In the case of the first step, do the usual stuff
       xnew = self.xhist[-1] 
-      self.gnew = self.problem.gradf(xnew,**problem.kwargs)
+      self.gnew = self.problem.gradf(xnew,**self.problem.kwargs)
       self.init_H()
     if(self.H_type == 'inverse'):
       s = - self.H@self.gnew
@@ -283,12 +283,6 @@ class DFP(QuasiNewtonOptimizer):
         return Hnew        
     
 class BFGS(QuasiNewtonOptimizer):
-    #Overloading the init to precise we compute the Hessian
-    def __init__(self,problem,stop_threshold = 1e-6,hessian_init = "identity"):
-      super().__init__(problem,stop_threshold)
-      self.H_type = "hessian"
-      self.hessian_init = hessian_init
-      pass
   
     def calculate_H(self, H, gnew, g, xnew, x):
         d = xnew - x    #displacement between the new point xnew and the old point x
@@ -313,6 +307,11 @@ class BFGS(QuasiNewtonOptimizer):
         xnew = x0 #Sets the initial point
         gnew = self.problem.gradient_function(x0) #Computes the gradient at the initial point
         Hnew = np.eye(n)  #Initializes the Hessian as the identity matrix
+        x_list = [x0] #Initializes a list to store the sequence of points 
+        n = x0.shape[0] #Dimensionality of the problem
+        xnew = x0 #Sets the initial point
+        gnew = self.problem.gradient_function(x0) #Computes the gradient at the initial point
+        Hnew = np.eye(n)  #Initializes the Hessian as the identity matrix
         # self.points.append(copy.deepcopy(xnew))
 
         for _ in range(self.max_iterations):
@@ -322,7 +321,6 @@ class BFGS(QuasiNewtonOptimizer):
             # print(H)
 
             s = -Hnew @ gnew
-            # alpha, *_ = self.line_search.search(x, s, 0, 1e8)
             alpha, *_ = self.line_search.search(x, s)
 
             xnew = x + alpha * s
@@ -339,6 +337,14 @@ class BFGS(QuasiNewtonOptimizer):
         return x_list  
       
 class CompareBFGS(QuasiNewtonOptimizer):
+    
+    #Overloading the init to precise we compute the Hessian
+    def __init__(self,problem,stop_threshold = 1e-6,line_search = "none",hessian_init = "identity"):
+      super().__init__(problem,stop_threshold,line_search,hessian_init)
+      self.Hhist = []
+      self.HestHist = []
+      pass
+
     def calculate_H(self, H, gnew, g, xnew, x):
         d = xnew - x
         y = gnew - g
@@ -353,7 +359,9 @@ class CompareBFGS(QuasiNewtonOptimizer):
             + (1 + (y.T @ H @ y) / dTy) * (d @ d.T) / dTy
             - (dyT @ H + H @ y @ d.T) / (dTy)
         )
-
+        self.HestHist.append(Hnew)
+        hessian = finite_difference(self.problem.gradf,xnew,self.problem.epsilon,**self.problem.kwargs)
+        self.Hhist.append(hessian)
         return Hnew
 
     def optimize(self, x0, analytic_H): #need fixing(not sure what to replace analtic_H with)
@@ -385,12 +393,13 @@ class CompareBFGS(QuasiNewtonOptimizer):
             x_list.append(xnew)
 
             # self.points.append(copy.deepcopy(xnew))
-            if self.check_criterion(x, xnew, g):  #should be replaced by our step function above but not sure
+            if self.check_criterion(x, xnew, g):
                 self.success = True
                 self.xmin = xnew
                 break
 
-        return x_list   
+        return x_list      
+
 
 if __name__ == '__main__':
     
@@ -403,7 +412,8 @@ if __name__ == '__main__':
 
     epsilon = 1e-6
     pb = OptimizationProblem(g, gradf = grad_g, r = 2)
-
-    optimizer = NewtonOptimizer(pb,1e-9,"inexact")
-    optimizer.solve(np.array([-1,1]),15)
-    print(f'optimizer.xhist: {optimizer.xhist}')
+    optimizer = CompareBFGS(pb,1e-9,"inexact","fd")
+    optimizer.solve(np.array([2,4]),15)
+    #print(f'optimizer.xhist: {optimizer.xhist}')
+    print(optimizer.HestHist)
+    print(optimizer.Hhist)
