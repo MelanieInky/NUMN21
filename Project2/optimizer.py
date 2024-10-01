@@ -27,7 +27,7 @@ class Optimizer(ABC):
             sigma (float, optional): rho parameter in inexact line search, ignored for other types of line search. Defaults to 0.1.
         """
         self.problem = problem
-        self.stop_threshold = 1e-6
+        self.stop_threshold = stop_threshold
         self.line_search = line_search
         self.rho = rho
         self.sigma = sigma
@@ -294,10 +294,16 @@ class QuasiNewtonOptimizer(Optimizer):
             )
 
     @abstractmethod
-    def update_H(self):
-        """Method that updates the approximation of the inverse of the Hessian.
-        Returns:
-            H: The updated approximation of the Hessian
+    def update_H(self, H, gnew, g, xnew, x):
+        """
+        Method that updates the estimate of H, the inverse of the Hessian function
+        # Parameters:
+
+        - H: Inverse Hessian
+        - g: gradient of objective function at the previous point x
+        - gnew: gradient of objective function at the new point xnew
+        - x: The current/previous point in the parameter space before the update
+        - xnew: The new point in the parameter space
         """
         pass
 

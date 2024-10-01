@@ -1,5 +1,5 @@
 #from Project2 import finite_diff
-import finite_diff
+from finite_diff import finite_difference
 from collections.abc import Callable
 import numpy.typing as npt
 from typing import Concatenate
