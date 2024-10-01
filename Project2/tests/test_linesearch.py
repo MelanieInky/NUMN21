@@ -1,5 +1,11 @@
 """ Tests for the different line searches"""
 import unittest
+import sys
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
 
 from Project2.finite_diff import finite_difference
 from Project2.optimization import OptimizationProblem
@@ -73,13 +79,11 @@ class TestANN(unittest.TestCase):
         print("\n---- Running tests for exact line search, part 5-----")
         x = np.array([-3,1])
         s = np.array([1,-1])
-        alpha = self.opt2d.exact_line_search(x,s)
+        alpha = self.opt2d_2.exact_line_search(x,s)
         expected_alpha = -1/(2*s[0]*s[1])*(s[0] * x[1] + s[1]*x[0])
         print(f'Expecting alpha = {expected_alpha}, received alpha = {alpha}')
         self.assertAlmostEqual(alpha,expected_alpha)
-              
-      
-    
+
         
 
 unittest.main(argv=['first-arg-is-ignored'], exit=False)
