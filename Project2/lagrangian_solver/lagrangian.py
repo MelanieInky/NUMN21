@@ -58,9 +58,10 @@ class LagrangianProblem:
         t_list = t1 + c*t2
         for k in range(1,np.shape(x_list)[0]):
             x_dot_list[k] = self.get_velocity(x_list[k-1:k+1],t_list[k-1:k+1])
-        self.action, _ = quadrature(self.L,x_list,x_dot_list,w,c,t1,t2,self.grad_L)
-        return self.action
-        
+        self.action, self.grad_action = quadrature(self.L,x_list,x_dot_list,w,c,t1,t2,self.grad_L)
+        return self.action , self.grad_action
+    
+    def S_filtered
 
 if __name__ == "__main__":
     m = 1
@@ -71,6 +72,10 @@ if __name__ == "__main__":
     def V(x,x_dot,t):
         return m*g*x
     
+    
+    #Problem. Changing the position does not change the kinetic energy. 
+    #But due to the fact velocity is computed with finite difference, it actually does...
+    #This may affect optimization performance, but should work anyway.
     def gradK(x,x_dot,t):
         return 0
     
@@ -81,19 +86,21 @@ if __name__ == "__main__":
     test = LagrangianProblem(K,V,gradK,gradV)
     
     #Higher T makes for some bigger error.
-    T = 0.05
+    T = 0.3
     
     variations = np.linspace(-1,1,50)
     actions = np.zeros_like(variations)
     
     x_list = np.array([[0],[-1/2*g*(T/2)**2],[-1/2*g*T**2]])
     x_dot_init = np.array([0])
+    action , grad_action  = test.S(x_list,x_dot_init,0,T)
+    
     
     #Variation in midpoint
     for i , eps in enumerate(variations):
         x_list_tmp = np.copy(x_list)
         x_list_tmp[1] += eps
-        actions[i] = test.S(x_list_tmp,x_dot_init,0,T)
+        actions[i] , _  = test.S(x_list_tmp,x_dot_init,0,T)
     
     plt.figure()
     plt.plot(variations,actions) #The minimum is clearly at 0 variation
@@ -102,7 +109,7 @@ if __name__ == "__main__":
     for i , eps in enumerate(variations):
         x_list_tmp = np.copy(x_list)
         x_list_tmp[2] += eps
-        actions[i] = test.S(x_list_tmp,x_dot_init,0,T)
+        actions[i] , _ = test.S(x_list_tmp,x_dot_init,0,T)
     
     plt.figure()
     plt.plot(variations,actions) #The minimum is clearly at 0 variation
