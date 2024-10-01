@@ -47,7 +47,7 @@ class Optimizer(ABC):
         break
       fa_old = problem.f(x + alpha_old * s, **problem.kwargs)
       dfa = dphi(alpha)
-      if (fa > f0 + alpha * df0).any() or (fa >= fa_old).any():
+      if (fa > f0 + alpha * rho * df0).any() or (fa >= fa_old).any():
         a = alpha_old
         b = alpha
         B = 1
