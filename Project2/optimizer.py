@@ -123,7 +123,7 @@ class Optimizer(ABC):
         if(df0 > 0):
             raise ValueError("Wrong search direction, as phi'(0) > 0")
         mu = (f_ - f0) / (rho * df0)
-        alpha_new = np.min(np.array([alpha_init, mu]))  # 0 < a_1 <= mu? #p37
+        alpha_new = min(alpha_init, mu)  # 0 < a_1 <= mu? #p37
         alpha = alpha_new  # p37
         alpha_old = 0
         B = 0
@@ -287,6 +287,8 @@ class QuasiNewtonOptimizer(Optimizer):
             hessian = finite_difference(
                 self.problem.gradf, xnew, self.problem.epsilon, **self.problem.kwargs
             )
+            #Symmetrizing step
+            hessian = 1/2 * (hessian + hessian.T)
             self.H = np.linalg.inv(hessian)
         elif self.hessian_init == "identity":
             self.H = np.identity(len(self.gnew))
