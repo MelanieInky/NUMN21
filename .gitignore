@@ -5,3 +5,4 @@ Project2/__pycache__/__init__.cpython-311.pyc
 Project2/__pycache__/optimizer.cpython-311.pyc
 Project2/lagrangian_solver/__pycache__/quadratures.cpython-311.pyc
 Project2/__pycache__/Rosenbrock.cpython-311.pyc
+Project2/__pycache__/line_search_visualizer.cpython-311.pyc
