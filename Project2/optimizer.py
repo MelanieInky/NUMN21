@@ -177,57 +177,57 @@ class Optimizer(ABC):
         return alpha
 
     def step(self, x:npt.ArrayLike):
-      """Performs a step for the optimizer
+        """Performs a step for the optimizer
 
-      Args:
-          x (npt.ArrayLike): The current guess for x.
+        Args:
+            x (npt.ArrayLike): The current guess for x.
 
-      Returns:
-          x (nd.array), stop (bool): x is the new guess, Stop is true if the stopping criterion is hit
-      """
-      s = self.calculate_s()  # Search direction
-      if self.line_search == "none":
-          alpha = 1
-      elif self.line_search == "exact":
-          alpha = self.exact_line_search(x, s)
-      elif self.line_search == "inexact":
-          alpha = self.inexact_line_search(x, s)
-      x = x + alpha * s
-      stop = alpha == 0
-      stop = stop or np.linalg.norm(s) < self.stop_threshold
-      return x, stop
+        Returns:
+            x (nd.array), stop (bool): x is the new guess, Stop is true if the stopping criterion is hit
+        """
+        s = self.calculate_s()  # Search direction
+        if self.line_search == "none":
+            alpha = 1
+        elif self.line_search == "exact":
+            alpha = self.exact_line_search(x, s)
+        elif self.line_search == "inexact":
+            alpha = self.inexact_line_search(x, s)
+        x = x + alpha * s
+        stop = alpha == 0
+        stop = stop or np.linalg.norm(s) < self.stop_threshold
+        return x, stop
 
     @abstractmethod
     def calculate_s(self):
-      """
-      Method that calculates the search direction
-      
-      Returns:
-          s (nd.array): Vector of the search direction
-      """
-      pass
+        """
+        Method that calculates the search direction
+        
+        Returns:
+            s (nd.array): Vector of the search direction
+        """
+        pass
 
     def solve(self, x0:npt.ArrayLike, max_iter=20):
-      """Solve the optimization problem with the chosen optimization algorithm
+        """Solve the optimization problem with the chosen optimization algorithm
 
-      Args:
-          x0 (nd.array): A 1d numpy vector with the initial guess for the solution
-          max_iter (int, optional): Maximum number of iterations to do before giving up. Defaults to 20.
+        Args:
+            x0 (nd.array): A 1d numpy vector with the initial guess for the solution
+            max_iter (int, optional): Maximum number of iterations to do before giving up. Defaults to 20.
 
-      Returns:
-          _type_: _description_
-      """
-      x = x0
-      self.xhist = [x]
-      for i in range(max_iter):
-          x, stop = self.step(x)
-          self.xhist.append(x)
-          if stop:
-              self.success = True
-              return x
-      self.success = False
-      print("Optimizer did not converge")
-      return x
+        Returns:
+            _type_: _description_
+        """
+        x = x0
+        self.xhist = [x]
+        for i in range(max_iter):
+            x, stop = self.step(x)
+            self.xhist.append(x)
+            if stop:
+                self.success = True
+                return x
+        self.success = False
+        print("Optimizer did not converge")
+        return x
 
 
 class NewtonOptimizer(Optimizer):
@@ -259,8 +259,6 @@ class QuasiNewtonOptimizer(Optimizer):
               - "fd" or "finite_diff": Initialize the Hessian with a finite difference approximation.
         """
         super().__init__(problem, stop_threshold, line_search)
-        # Specify if H corresponds to the Hessian or the inverse Hessian
-        self.H_type = "inverse"
 
         # Define how to initialize the hessian
         self.hessian_init = hessian_init
@@ -277,10 +275,7 @@ class QuasiNewtonOptimizer(Optimizer):
             xnew = self.xhist[-1]
             self.gnew = self.problem.gradf(xnew, **self.problem.kwargs)
             self.init_H()
-        if self.H_type == "inverse":
-            s = -self.H @ self.gnew
-        else:
-            s = -np.linalg.solve(self.H, self.gnew)
+        s = -self.H @ self.gnew
         self.g = np.copy(self.gnew)
         return s
 
@@ -290,11 +285,7 @@ class QuasiNewtonOptimizer(Optimizer):
             hessian = finite_difference(
                 self.problem.gradf, xnew, self.problem.epsilon, **self.problem.kwargs
             )
-            if self.H_type == "inverse":
-                self.H = np.linalg.inv(hessian)
-            else:
-                self.H = hessian
-
+            self.H = np.linalg.inv(hessian)
         elif self.hessian_init == "identity":
             self.H = np.identity(len(self.gnew))
         else:
@@ -304,11 +295,11 @@ class QuasiNewtonOptimizer(Optimizer):
 
     @abstractmethod
     def update_H(self):
-      """Method that updates the approximation of the inverse of the Hessian.
-      Returns:
-          H: The updated approximation of the Hessian
-      """
-      pass
+        """Method that updates the approximation of the inverse of the Hessian.
+        Returns:
+            H: The updated approximation of the Hessian
+        """
+        pass
 
 
 class GoodBroyden(QuasiNewtonOptimizer):
