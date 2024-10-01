@@ -120,6 +120,8 @@ class Optimizer(ABC):
           print("Set lower bound of f is higher than current guess, returning as is...")
           return 0
         df0 = dphi(0)
+        if(df0 > 0):
+            raise ValueError("Wrong search direction, as phi'(0) > 0")
         mu = (f_ - f0) / (rho * df0)
         alpha_new = np.min(np.array([alpha_init, mu]))  # 0 < a_1 <= mu? #p37
         alpha = alpha_new  # p37
