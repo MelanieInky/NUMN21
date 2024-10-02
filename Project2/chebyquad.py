@@ -83,41 +83,26 @@ def gradchebyquad(x):
 import warnings
 warnings.filterwarnings("ignore")
 if __name__ == '__main__':
-  #n=8
-    x=linspace(0,1,8)
-    xmin8= so.fmin_bfgs(chebyquad,x,gradchebyquad)  # should converge after 18 iterations
-    print("n=8")
-    print("Using fmin_bfgs:",np.sort(xmin8))
-    #chebyquad opt
-    epsilon = 1e-2
-    problem = OptimizationProblem(chebyquad, gradf = gradchebyquad)
-    optimizer_GB8= GoodBroyden(problem,epsilon,line_search="exact")
-    optimizer_BB8= BadBroyden(problem,epsilon,line_search="exact")
-    optimizer_SB8= SymmetricBroyden(problem,epsilon,line_search="exact")
-    optimizer_DFP8= DFP(problem,epsilon,line_search="exact")
-    optimizer_BFGS8= BFGS(problem,epsilon,line_search="exact")
-
-
-    optimizer_GB8.solve(x,30)
-    optimizer_BB8.solve(x,30)
-    optimizer_SB8.solve(x,30)
-    optimizer_DFP8.solve(x,30)
-    optimizer_BFGS8.solve(x,30)
-
-
-
-
-    print(f'optimizer_GB8.xhist: {np.sort(optimizer_GB8.xhist[-1])}')
-    print(f'optimizer_BB8.xhist: {np.sort(optimizer_BB8.xhist[-1])}')
-    print(f'optimizer_SB8.xhist: {np.sort(optimizer_SB8.xhist[-1])}')
-    print(f'optimizer_DFP8.xhist: {np.sort(optimizer_DFP8.xhist[-1])}')
-    print(f'optimizer_BFGS8.xhist: {np.sort(optimizer_BFGS8.xhist[-1])}')
-
-  #n=4
-    x=linspace(0,1,4)
-    xmin4= so.fmin_bfgs(chebyquad,x,gradchebyquad)  # should converge after 18 iterations
+    try:
+        from Project2.optimization import OptimizationProblem
+        from Project2.optimizer import *
+    except ModuleNotFoundError:
+        from optimization import OptimizationProblem
+        from optimizer import *
+        
+    def solve_and_summary(optimizer,x0,max_iter = 30):
+        optimizer.solve(x,max_iter)
+        optimizer.summary(sort_x = True)
+        
+        
+    #n=4
     print("n=4")
-    print("Using fmin_bfgs:",xmin4)
+    x=linspace(0,1,4)
+    epsilon = 1e-8
+    print("Using fmin_bfgs:")
+    xmin4= so.fmin_bfgs(chebyquad,x,gradchebyquad)  # should converge after 18 iterations
+
+    print("x=",xmin4)
     #chebyquad opt
 
     problem = OptimizationProblem(chebyquad, gradf = gradchebyquad)
@@ -128,25 +113,47 @@ if __name__ == '__main__':
     optimizer_BFGS4= BFGS(problem,epsilon,line_search="exact")
 
 
-    optimizer_GB4.solve(x,30)
-    optimizer_BB4.solve(x,30)
-    optimizer_SB4.solve(x,30)
-    optimizer_DFP4.solve(x,30)
-    optimizer_BFGS4.solve(x,30)
+    solve_and_summary(optimizer_GB4,x,30)
+    solve_and_summary(optimizer_BB4,x,30)
+    solve_and_summary(optimizer_SB4,x,30)
+    solve_and_summary(optimizer_DFP4,x,30)
+    solve_and_summary(optimizer_BFGS4,x,30)
+
+    
+    
+
+  #n=8
+    print("n=8")
+    x=linspace(0,1,8)
+    print("Using fmin_bfgs")
+    xmin8= so.fmin_bfgs(chebyquad,x,gradchebyquad)  # should converge after 18 iterations
+    print("x = ",np.sort(xmin8))
+    #chebyquad opt
+    epsilon = 1e-8
+    problem = OptimizationProblem(chebyquad, gradf = gradchebyquad)
+    optimizer_GB8= GoodBroyden(problem,epsilon,line_search="exact")
+    optimizer_BB8= BadBroyden(problem,epsilon,line_search="exact")
+    optimizer_SB8= SymmetricBroyden(problem,epsilon,line_search="exact")
+    optimizer_DFP8= DFP(problem,epsilon,line_search="exact")
+    optimizer_BFGS8= BFGS(problem,epsilon,line_search="exact")
+
+
+    solve_and_summary(optimizer_GB8,x,30)
+    solve_and_summary(optimizer_BB8,x,30)
+    solve_and_summary(optimizer_SB8,x,30)
+    solve_and_summary(optimizer_DFP8,x,30)
+    solve_and_summary(optimizer_BFGS8,x,30)
 
 
 
 
-    print(f'optimizer_GB4.xhist: {np.sort(optimizer_GB4.xhist[-1])}')
-    print(f'optimizer_BB4.xhist: {np.sort(optimizer_BB4.xhist[-1])}')
-    print(f'optimizer_SB4.xhist: {np.sort(optimizer_SB4.xhist[-1])}')
-    print(f'optimizer_DFP4.xhist: {np.sort(optimizer_DFP4.xhist[-1])}')
-    print(f'optimizer_BFGS4.xhist: {np.sort(optimizer_BFGS4.xhist[-1])}')
-      #n=11
+    #n=11
+    print("n=11")
+    print("Using fmin_bfgs")
     x=linspace(0,1,11)
     xmin11= so.fmin_bfgs(chebyquad,x,gradchebyquad)  # should converge after 18 iterations
-    print("n=11")
-    print("Using fmin_bfgs:",np.sort(xmin11))
+
+    print("x:",np.sort(xmin11))
     #chebyquad opt
 
     problem = OptimizationProblem(chebyquad, gradf = gradchebyquad)
@@ -154,20 +161,18 @@ if __name__ == '__main__':
     optimizer_BB11= BadBroyden(problem,epsilon,line_search="exact")
     optimizer_SB11= SymmetricBroyden(problem,epsilon,line_search="exact")
     optimizer_DFP11=DFP(problem,epsilon,line_search="exact")
-    optimizer_BFGS11= BFGS(problem,epsilon,line_search="exact")
+    optimizer_BFGS11= BFGS(problem,epsilon,line_search="inexact",hessian_init="fd")
+    optimizer_BFGS11.setup_inexact_line_search(0,rho = 0.01, sigma = 0.1)
+    optimizer_newton = NewtonOptimizer(problem,line_search="exact")
+    optimizer_newton.setup_inexact_line_search(0)
+    
 
 
-    optimizer_GB11.solve(x,30)
-    optimizer_BB11.solve(x,30)
-    optimizer_SB11.solve(x,30)
-    optimizer_DFP11.solve(x,30)
-    optimizer_BFGS11.solve(x,30)
+    solve_and_summary(optimizer_GB11,x,60)
+    solve_and_summary(optimizer_BB11,x,60)
+    solve_and_summary(optimizer_SB11,x,60)
+    solve_and_summary(optimizer_DFP11,x,60)
+    solve_and_summary(optimizer_BFGS11,x,60)
+    solve_and_summary(optimizer_newton,x,60)
 
 
-
-
-    print(f'optimizer_GB11.xhist: {np.sort(optimizer_GB11.xhist[-1])}')
-    print(f'optimizer_BB11.xhist: {np.sort(optimizer_BB11.xhist[-1])}')
-    print(f'optimizer_SB11.xhist: {np.sort(optimizer_SB11.xhist[-1])}')
-    print(f'optimizer_DFP11.xhist: {np.sort(optimizer_DFP11.xhist[-1])}')
-    print(f'optimizer_BFGS11.xhist: {np.sort(optimizer_BFGS11.xhist[-1])}')

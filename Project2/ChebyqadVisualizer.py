@@ -1,5 +1,6 @@
 #Chebyquad Visualizer
 import matplotlib.pyplot as plt
+import numpy as np
 #exact line search
 
 plt.figure(1)

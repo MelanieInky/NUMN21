@@ -31,6 +31,7 @@ class Optimizer(ABC):
         self.line_search = line_search
         self.rho = rho
         self.sigma = sigma
+        self.name = "Generic optimizer"
         pass
 
     def exact_line_search(self, x, s):
@@ -121,7 +122,7 @@ class Optimizer(ABC):
           return 0
         df0 = dphi(0)
         if(df0 > 0):
-            raise ValueError("Wrong search direction, as phi'(0) > 0")
+            print("Wrong search direction detected.")
         mu = (f_ - f0) / (rho * df0)
         alpha_new = min(alpha_init, mu)  # 0 < a_1 <= mu? #p37
         alpha = alpha_new  # p37
@@ -195,9 +196,9 @@ class Optimizer(ABC):
         elif self.line_search == "inexact":
             alpha = self.inexact_line_search(x, s)
         x = x + alpha * s
-        stop = alpha == 0
-        stop = stop or np.linalg.norm(s) < self.stop_threshold
-        return x, stop
+        stop_failure = alpha == 0
+        stop_success = np.linalg.norm(s) < self.stop_threshold
+        return x, stop_success, stop_failure
 
     @abstractmethod
     def calculate_s(self):
@@ -222,15 +223,54 @@ class Optimizer(ABC):
         x = x0
         self.xhist = [x]
         for i in range(max_iter):
-            x, stop = self.step(x)
+            x, stop_success, stop_failure = self.step(x)
             self.xhist.append(x)
-            if stop:
+            if stop_success:
                 self.success = True
+                return x
+            elif stop_failure:
+                print("Stopping prematurely as the solver will not converge further")
+                self.success = False
                 return x
         self.success = False
         print("Optimizer did not converge")
         return x
 
+    def get_fhist(self):
+        f = self.problem.f
+        self.fhist = []
+        for j in range(len(self.xhist)):
+            self.fhist.append(f(self.xhist[j],**self.problem.kwargs))
+        return self.fhist
+    
+    def get_name(self):
+        """Get the name of the optimizer
+
+        Returns:
+            str: The name of the optimizer
+        """
+        return "Unknown optimizer"
+    
+    def summary(self,sort_x = False):
+        name = self.get_name()
+        self.get_fhist()
+        print(f"\n--- Optimization with {name}. Line search: {self.line_search} ---")
+        try:
+            s = "Success" if self.success else "No success"
+            print(f"{s} after {len(self.xhist)} iterations")
+        except AttributeError:
+            pass
+        print(f"Initial value of f: {self.fhist[0]}")
+        print(f"Last value of f: {self.fhist[-1]}")
+        if(len(self.xhist[-1])<20): #Dont print if too long
+            lastx = self.xhist[-1]
+            if(sort_x):
+                lastx = np.sort(lastx)
+            print(f"Last value of x: {lastx}")
+            
+            
+        
+        
 
 class NewtonOptimizer(Optimizer):
 
@@ -241,6 +281,9 @@ class NewtonOptimizer(Optimizer):
         grad = problem.gradf(x, **problem.kwargs)
         s = -np.linalg.solve(hessian, grad)
         return s
+    
+    def get_name(self):
+        return "Newton"
 
 
 class QuasiNewtonOptimizer(Optimizer):
@@ -310,10 +353,15 @@ class QuasiNewtonOptimizer(Optimizer):
         - xnew: The new point in the parameter space
         """
         pass
+    
+        
+    def get_name(self):
+        return "Unknown Quasi-Newton"
 
 
 class GoodBroyden(QuasiNewtonOptimizer):
-
+    
+    
     def update_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
@@ -336,6 +384,8 @@ class GoodBroyden(QuasiNewtonOptimizer):
         )  # update Inverse Hessian by Sherman-Morisson formula
         return Hnew
 
+    def get_name(self):
+        return "Good Broyden"
 
 class BadBroyden(QuasiNewtonOptimizer):
 
@@ -359,6 +409,10 @@ class BadBroyden(QuasiNewtonOptimizer):
         Hnew = H + (d - H @ y) / (y.T @ y) @ y.T  # update
 
         return Hnew
+
+
+    def get_name(self):
+        return "Bad Broyden"
 
 
 class SymmetricBroyden(QuasiNewtonOptimizer):
@@ -392,7 +446,12 @@ class SymmetricBroyden(QuasiNewtonOptimizer):
         return Hnew
 
 
+    def get_name(self):
+        return "Symmetric Broyden"
+
 class DFP(QuasiNewtonOptimizer):
+    
+    
     def update_H(self, H, gnew, g, xnew, x):
         """
         # Parameters:
@@ -413,6 +472,9 @@ class DFP(QuasiNewtonOptimizer):
         Hnew = H + (d @ d.T) / (d.T @ y) - (H @ y @ y.T @ H) / (y.T @ H @ y)  # update
         return Hnew
 
+
+    def get_name(self):
+        return "DFP"
 
 class BFGS(QuasiNewtonOptimizer):
 
@@ -435,47 +497,9 @@ class BFGS(QuasiNewtonOptimizer):
 
         return Hnew
 
-    def optimize(self, x0):
-        x_list = [x0]  # Initializes a list to store the sequence of points
-        n = x0.shape[0]  # Dimensionality of the problem
-        xnew = x0  # Sets the initial point
-        gnew = self.problem.gradient_function(
-            x0
-        )  # Computes the gradient at the initial point
-        Hnew = np.eye(n)  # Initializes the Hessian as the identity matrix
-        x_list = [x0]  # Initializes a list to store the sequence of points
-        n = x0.shape[0]  # Dimensionality of the problem
-        xnew = x0  # Sets the initial point
-        gnew = self.problem.gradient_function(
-            x0
-        )  # Computes the gradient at the initial point
-        Hnew = np.eye(n)  # Initializes the Hessian as the identity matrix
-        # self.points.append(copy.deepcopy(xnew))
 
-        for _ in range(self.max_iterations):
-            x = xnew
-            g = gnew
-            H = Hnew
-            # print(H)
-
-            s = -Hnew @ gnew
-            alpha, *_ = self.line_search.search(x, s)
-
-            xnew = x + alpha * s
-            gnew = self.problem.gradient_function(xnew)
-            Hnew = self.update_H(H, gnew, g, xnew, x)
-            x_list.append(xnew)
-
-            # self.points.append(copy.deepcopy(xnew))
-            if self.check_criterion(
-                x, xnew, g
-            ):  # should be replaced by our step function above but not sure
-                self.success = True
-                self.xmin = xnew
-                break
-
-        return x_list
-
+    def get_name(self):
+        return "BFGS"
 
 class CompareBFGS(QuasiNewtonOptimizer):
 
@@ -509,50 +533,9 @@ class CompareBFGS(QuasiNewtonOptimizer):
         self.Hhist.append(hessian)
         return Hnew
 
-    def optimize(
-        self, x0, analytic_H
-    ):  # need fixing(not sure what to replace analtic_H with)
-        x_list = [x0]  # Initializes a list to store the sequence of points
-        n = x0.shape[0]  # Dimensionality of the problem
-        xnew = x0  # Sets the initial point
-        gnew = self.problem.gradient_function(
-            x0
-        )  # Computes the gradient at the initial point
-        Hnew = np.eye(n)  # Initializes the Hessian as the identity matrix
-        # self.points.append(copy.deepcopy(xnew))
 
-        for _ in range(self.max_iterations):
-            x = xnew
-            g = gnew
-            H = Hnew
-            # print(H)
-
-            s = -Hnew @ gnew
-
-            alpha, *_ = self.line_search.search(x, s)
-
-            xnew = x + alpha * s
-            gnew = self.problem.gradient_function(xnew)
-            Hnew = self.update_H(H, gnew, g, xnew, x)
-            Hanalytic = analytic_H(
-                xnew
-            )  # need fixing(not sure what to replace analtic_H with)
-            Hdiff = np.linalg.inv(
-                self.problem.hessian_function(xnew)
-            )  # need fixing(not sure what to replace w/ self.problem.hessian_function)
-            diff = np.linalg.norm(Hnew - Hdiff)
-            print(diff)  # result for Q12
-
-            x_list.append(xnew)
-
-            # self.points.append(copy.deepcopy(xnew))
-            if self.check_criterion(x, xnew, g):
-                self.success = True
-                self.xmin = xnew
-                break
-
-        return x_list
-
+    def get_name(self):
+        return "BFGS"
 
 if __name__ == "__main__":
 
@@ -565,8 +548,9 @@ if __name__ == "__main__":
     epsilon = 1e-6
     pb = OptimizationProblem(g, gradf=grad_g, r=2)
     optimizer = DFP(pb, 1e-9, "inexact", "fd")
-    optimizer.setup_inexact_line_search(1)
+    optimizer.setup_inexact_line_search(0)
     optimizer.solve(np.array([2, 4]), 15)
+    optimizer.summary()
     # print(f'optimizer.xhist: {optimizer.xhist}')
     # print(optimizer.HestHist)
     # print(optimizer.Hhist)

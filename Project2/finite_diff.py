@@ -11,7 +11,7 @@ DEBUG = False
 
 def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
                       x: npt.ArrayLike,
-                      eps=1e-6,
+                      eps=1e-3,
                       **kwargs) -> npt.ArrayLike:
     """Computes the Jacobian of the function f at the point x via a first order, finite difference approach
 
@@ -25,7 +25,6 @@ def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
     """
     x = np.array(x,dtype = float)
     x = np.atleast_1d(x)
-    print(x)
     if not kwargs:
         fx = f(x)
     else:
@@ -41,10 +40,6 @@ def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
             fx_plus = f(x_plus)
         else:
             fx_plus = f(x_plus, **kwargs)
-        if DEBUG:
-            print(f"fx : {fx}")
-            print(f"fx_plus: {fx_plus}")
-            print((fx_plus - fx).shape)
         J[:, i] = (fx_plus - fx) / eps
     return J
 
