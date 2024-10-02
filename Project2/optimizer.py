@@ -278,6 +278,7 @@ class NewtonOptimizer(Optimizer):
         problem = self.problem
         x = self.xhist[-1]
         hessian = finite_difference(problem.gradf, x, problem.epsilon, **problem.kwargs)
+        print(hessian)
         grad = problem.gradf(x, **problem.kwargs)
         s = -np.linalg.solve(hessian, grad)
         return s
