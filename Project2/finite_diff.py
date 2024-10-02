@@ -11,7 +11,7 @@ DEBUG = False
 
 def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
                       x: npt.ArrayLike,
-                      eps=1e-6,
+                      eps=1e-3,
                       **kwargs) -> npt.ArrayLike:
     """Computes the Jacobian of the function f at the point x via a first order, finite difference approach
 
@@ -23,7 +23,8 @@ def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
     Returns:
         ndarray: the Jacobian of f at the point x of dimension (R^n * R^m) 
     """
-    x = x.astype(float, copy=False)
+    x = np.array(x,dtype = float)
+    x = np.atleast_1d(x)
     if not kwargs:
         fx = f(x)
     else:
@@ -31,7 +32,7 @@ def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
     if len(np.asarray(fx).shape) == 0:
         fx = np.array([fx])
 
-    J = np.zeros((len(fx), len(x)))
+    J = np.zeros((len(fx), x.shape[0]))
     for i in range(len(x)):
         x_plus = x.copy()
         x_plus[i] += eps
@@ -39,10 +40,6 @@ def finite_difference(f: Callable[Concatenate[npt.ArrayLike,...],npt.ArrayLike],
             fx_plus = f(x_plus)
         else:
             fx_plus = f(x_plus, **kwargs)
-        if DEBUG:
-            print(f"fx : {fx}")
-            print(f"fx_plus: {fx_plus}")
-            print((fx_plus - fx).shape)
         J[:, i] = (fx_plus - fx) / eps
     return J
 
